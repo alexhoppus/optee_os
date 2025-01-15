@@ -15,7 +15,8 @@
 # include <ldelf_syscalls.h>
 # define _ubsan_panic() _ldelf_panic(2)
 #else
-# error "Unexpected build for ubsan"
+# include <utee_syscalls.h>
+# define _ubsan_panic() _utee_panic(TEE_ERROR_GENERIC)
 #endif
 
 struct source_location {
