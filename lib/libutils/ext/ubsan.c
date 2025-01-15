@@ -4,10 +4,19 @@
  */
 
 #include <compiler.h>
-#include <kernel/panic.h>
 #include <string.h>
 #include <trace.h>
 #include <types_ext.h>
+
+#if defined(__KERNEL__)
+# include <kernel/panic.h>
+# define _ubsan_panic() panic()
+#elif defined(__LDELF__)
+# include <ldelf_syscalls.h>
+# define _ubsan_panic() _ldelf_panic(2)
+#else
+# error "Unexpected build for ubsan"
+#endif
 
 struct source_location {
 	const char *file_name;
@@ -110,7 +119,7 @@ static void ubsan_handle_error(const char *func, struct source_location *loc,
 		 f, loc->file_name, loc->line, loc->column);
 
 	if (should_panic)
-		panic();
+		_ubsan_panic();
 }
 
 void __ubsan_handle_type_mismatch(struct type_mismatch_data *data,
@@ -188,12 +197,17 @@ void __ubsan_handle_out_of_bounds(void *data_, void *idx __unused)
 	ubsan_handle_error(__func__, &data->loc, ubsan_panic);
 }
 
-void __ubsan_handle_builtin_unreachable(void *data_)
+/*
+ * __ubsan_handle_builtin_unreachable and __ubsan_handle_missing_return
+ * will give "‘noreturn’ function does return" warning, because
+ * _ldelf_panic and _utee_panic are not marked as noreturn functions.
+ */
+void __noreturn __ubsan_handle_builtin_unreachable(void *data_)
 {
 	struct unreachable_data *data = data_;
 
 	ubsan_handle_error(__func__, &data->loc, false);
-	panic();
+	_ubsan_panic();
 }
 
 void __noreturn __ubsan_handle_missing_return(void *data_)
@@ -201,7 +215,7 @@ void __noreturn __ubsan_handle_missing_return(void *data_)
 	struct unreachable_data *data = data_;
 
 	ubsan_handle_error(__func__, &data->loc, false);
-	panic();
+	_ubsan_panic();
 }
 
 void __ubsan_handle_vla_bound_not_positive(void *data_, void *bound __unused)
