@@ -7,6 +7,7 @@
 #include <string.h>
 #include <trace.h>
 #include <types_ext.h>
+#include <atomic.h>
 
 #if defined(__KERNEL__)
 # include <kernel/panic.h>
@@ -19,11 +20,29 @@
 # define _ubsan_panic() _utee_panic(TEE_ERROR_GENERIC)
 #endif
 
+#define UBSAN_LOC_REPORTED (UINT32_C(1) << 31)
+
 struct source_location {
 	const char *file_name;
 	uint32_t line;
-	uint32_t column;
+	union {
+		uint32_t column;
+		uint32_t reported;
+	};
 };
+
+static bool was_already_reported(struct source_location *loc)
+{
+	uint32_t reported;
+
+	reported = loc->reported;
+	if (reported & UBSAN_LOC_REPORTED) {
+		return true;
+	} else {
+		return !atomic_cas_u32(&loc->reported, &reported,
+			reported | UBSAN_LOC_REPORTED);
+	}
+}
 
 struct type_descriptor {
 	uint16_t type_kind;
@@ -113,11 +132,14 @@ static void ubsan_handle_error(const char *func, struct source_location *loc,
 	const char *f = func;
 	const char func_prefix[] = "__ubsan_handle";
 
+	if (was_already_reported(loc))
+	    return;
+
 	if (!memcmp(f, func_prefix, sizeof(func_prefix) - 1))
 		f += sizeof(func_prefix);
 
 	EMSG_RAW("Undefined behavior %s at %s:%" PRIu32 " col %" PRIu32,
-		 f, loc->file_name, loc->line, loc->column);
+		 f, loc->file_name, loc->line, (loc->column & (~UBSAN_LOC_REPORTED)));
 
 	if (should_panic)
 		_ubsan_panic();
