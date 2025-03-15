@@ -57,7 +57,7 @@ aflags$(sm)	:= $(platform-aflags) $($(sm)-platform-aflags)
 # compiled, these flags are not propagated to the TA
 cppflags$(sm)	+= -include $(conf-file)
 cppflags$(sm) += -DTRACE_LEVEL=$(CFG_TEE_TA_LOG_LEVEL)
-ifeq ($(CFG_CORE_SANITIZE_UNDEFINED),y)
+ifeq ($(CFG_TA_SANITIZE_UNDEFINED),y)
 cppflags$(sm) += -fsanitize=undefined
 endif
 

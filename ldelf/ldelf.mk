@@ -29,7 +29,7 @@ cppflags$(sm)	+= -include $(conf-file)
 cppflags$(sm)	+= -DTRACE_LEVEL=$(CFG_TEE_CORE_LOG_LEVEL)
 cppflags$(sm)	+= -D__LDELF__
 
-ifeq ($(CFG_CORE_SANITIZE_UNDEFINED),y)
+ifeq ($(CFG_TA_SANITIZE_UNDEFINED),y)
 cflags$(sm)	+= -fsanitize=undefined
 endif
 
